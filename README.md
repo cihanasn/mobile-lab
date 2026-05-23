@@ -148,4 +148,106 @@ setContentView(GameView(this)) → ekrana ne gösterileceğini söylüyoruz.
 
 <img width="405" height="845" alt="image" src="https://github.com/user-attachments/assets/7253191b-d91b-4bc7-9152-b3b92973f3bd" />
 
+Süper! Temel iskelet çalışıyor. Şimdi sıradaki adım — grid üzerine renkli noktaları yerleştirelim.
+
+``` bash
+package com.cihanasn.flowgame
+
+import android.content.Context
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.view.View
+
+// Bir noktayı temsil eder
+data class Dot(val row: Int, val col: Int, val colorIndex: Int)
+
+class GameView(context: Context) : View(context) {
+
+    private val gridSize = 6 // 6x6 grid
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private var cellSize = 0f
+    private var offsetX = 0f
+    private var offsetY = 0f
+
+    // Oyun renkleri
+    private val colors = listOf(
+        Color.parseColor("#e74c3c"), // kırmızı
+        Color.parseColor("#3498db"), // mavi
+        Color.parseColor("#2ecc71"), // yeşil
+        Color.parseColor("#f39c12"), // turuncu
+        Color.parseColor("#9b59b6")  // mor
+    )
+
+    // Level 1: 5 çift nokta, 6x6 grid
+    private val dots = listOf(
+        Dot(0, 0, 0), Dot(4, 4, 0), // kırmızı çift
+        Dot(0, 5, 1), Dot(5, 0, 1), // mavi çift
+        Dot(1, 1, 2), Dot(3, 3, 2), // yeşil çift
+        Dot(0, 3, 3), Dot(5, 5, 3), // turuncu çift
+        Dot(2, 0, 4), Dot(2, 5, 4)  // mor çift
+    )
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        cellSize = minOf(w, h).toFloat() / gridSize
+        offsetX = (w - cellSize * gridSize) / 2f
+        offsetY = (h - cellSize * gridSize) / 2f
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        canvas.drawColor(Color.parseColor("#1a1a2e")) // koyu arka plan
+        drawGrid(canvas)
+        drawDots(canvas)
+    }
+
+    private fun drawGrid(canvas: Canvas) {
+        paint.color = Color.parseColor("#2a2a4a")
+        paint.strokeWidth = 2f
+        paint.style = Paint.Style.STROKE
+
+        for (row in 0..gridSize) {
+            // yatay çizgiler
+            canvas.drawLine(
+                offsetX,
+                offsetY + row * cellSize,
+                offsetX + gridSize * cellSize,
+                offsetY + row * cellSize,
+                paint
+            )
+            // dikey çizgiler
+            canvas.drawLine(
+                offsetX + row * cellSize,
+                offsetY,
+                offsetX + row * cellSize,
+                offsetY + gridSize * cellSize,
+                paint
+            )
+        }
+    }
+
+    private fun drawDots(canvas: Canvas) {
+        val radius = cellSize * 0.3f
+
+        for (dot in dots) {
+            val cx = offsetX + dot.col * cellSize + cellSize / 2f
+            val cy = offsetY + dot.row * cellSize + cellSize / 2f
+
+            // Dış halka
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = 4f
+            paint.color = colors[dot.colorIndex]
+            canvas.drawCircle(cx, cy, radius, paint)
+
+            // İç dolgu
+            paint.style = Paint.Style.FILL
+            paint.color = colors[dot.colorIndex]
+            canvas.drawCircle(cx, cy, radius * 0.6f, paint)
+        }
+    }
+}
+```
+
+<img width="428" height="875" alt="image" src="https://github.com/user-attachments/assets/e7c2fffd-987e-4dde-8fe0-2cf728f1c21e" />
 
