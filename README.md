@@ -535,3 +535,26 @@ class GameView(context: Context) : View(context) {
 
 <img width="358" height="763" alt="image" src="https://github.com/user-attachments/assets/4ffc2ddc-0c10-448c-b15b-f032e21a4b32" />
 
+``` bash
+. K . M . .
+. . . . . .
+. Y . . . .
+K . . . Y .
+. . T . . .
+M . T . . .
+```
+
+``` bash
+private val dots = listOf(
+    Dot(0, 1, 0), Dot(3, 0, 0), // kırmızı (K)
+    Dot(0, 3, 1), Dot(5, 0, 1), // mor (M)
+    Dot(2, 1, 2), Dot(3, 4, 2), // yeşil (Y)
+    Dot(4, 2, 3), Dot(5, 2, 3)  // turuncu (T)
+)
+```
+
+<img width="437" height="881" alt="image" src="https://github.com/user-attachments/assets/fd12bbea-ada4-4ae4-9456-d88f396c92f0" />
+
+
+
+
