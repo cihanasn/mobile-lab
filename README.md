@@ -555,6 +555,99 @@ private val dots = listOf(
 
 <img width="437" height="881" alt="image" src="https://github.com/user-attachments/assets/fd12bbea-ada4-4ae4-9456-d88f396c92f0" />
 
+``` bash
+    private val dots = listOf(
+        Dot(0, 1, 0), Dot(3, 0, 0), // kırmızı (K)
+        Dot(0, 3, 1), Dot(5, 0, 1), // mor (M)
+        Dot(2, 2, 2), Dot(4, 4, 2), // yeşil (Y)
+        Dot(4, 2, 3), Dot(3, 4, 3)  // turuncu (T)
+    )
+```
+
+<img width="419" height="874" alt="image" src="https://github.com/user-attachments/assets/b108d125-2de3-4d98-a28c-2417c26dd662" />
+
+Tüm çiftleri bağlayınca "You Win! 🎉" çıkmalı.
+
+``` bash
+    private fun drawWin(canvas: Canvas) {
+        paint.style = Paint.Style.FILL
+        paint.color = Color.parseColor("#CC000000")
+        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
+
+        paint.color = Color.WHITE
+        paint.textSize = cellSize * 1.2f
+        paint.textAlign = Paint.Align.CENTER
+        canvas.drawText("You Win! 🎉", width / 2f, height / 2f - cellSize, paint)
+
+        paint.textSize = cellSize * 0.6f
+        canvas.drawText("All paths connected!", width / 2f, height / 2f + cellSize * 0.2f, paint)
+    }
+
+    private fun checkWin(): Boolean {
+        val colorCount = colors.size
+        for (i in 0 until colorCount) {
+            val pair = dots.filter { it.colorIndex == i }
+            if (pair.size != 2) continue
+            val path = paths[i] ?: return false
+            if (path.size < 2) return false
+            val a = Cell(pair[0].row, pair[0].col)
+            val b = Cell(pair[1].row, pair[1].col)
+            val first = path.first()
+            val last = path.last()
+            if (!((first == a && last == b) || (first == b && last == a))) return false
+        }
+        return true
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        canvas.drawColor(Color.parseColor("#1a1a2e")) // koyu arka plan
+        drawGrid(canvas)
+        drawPaths(canvas)  // bunu ekle
+        drawDots(canvas)
+        if (checkWin()) drawWin(canvas)
+    }
+```
+
+Kaç renk varsa hepsini tek tek kontrol et. colors.size = 5 olduğu için 0,1,2,3,4 indekslerini döner.
+
+``` bash
+val colorCount = colors.size
+for (i in 0 until colorCount) {
+```
+
+O renge ait noktaları filtrele. Her rengin tam 2 noktası olmalı. 2 değilse (hatalı level tanımı gibi bir durum) o rengi atla.
+
+``` bash
+val pair = dots.filter { it.colorIndex == i }
+if (pair.size != 2) continue
+```
+
+O renge ait noktaları filtrele. Her rengin tam 2 noktası olmalı. 2 değilse (hatalı level tanımı gibi bir durum) o rengi atla.
+
+``` bash
+val path = paths[i] ?: return false
+```
+
+Yolda en az 2 hücre olmalı. Sadece başlangıç noktasına dokunulmuş ama çizilmemişse kazanılmadı.
+
+``` bash
+if (path.size < 2) return false
+```
+
+``` bash
+if (!((first == a && last == b) || (first == b && last == a))) return false
+```
+
+Yolun başı ve sonu iki noktayla eşleşiyor mu?
+
+first == a && last == b → A'dan B'ye çizilmiş ✅
+first == b && last == a → B'den A'ya çizilmiş ✅
+İkisi de değilse → yol iki noktayı bağlamıyor, false döner
+
+<img width="409" height="871" alt="image" src="https://github.com/user-attachments/assets/39a44700-12e0-44b4-85a2-7b4e8b080d00" />
+
+
 
 
 
