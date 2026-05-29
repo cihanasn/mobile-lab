@@ -647,7 +647,280 @@ first == b && last == a → B'den A'ya çizilmiş ✅
 
 <img width="409" height="871" alt="image" src="https://github.com/user-attachments/assets/39a44700-12e0-44b4-85a2-7b4e8b080d00" />
 
+**Yeni leveli yükleyelim**
 
+``` bash
+package com.cihanasn.flowgame
 
+import android.content.Context
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Path
+import android.view.MotionEvent
+import android.view.View
 
+// Bir noktayı temsil eder
+data class Dot(val row: Int, val col: Int, val colorIndex: Int)
+data class Cell(val row: Int, val col: Int)
+
+class GameView(context: Context) : View(context) {
+
+    private val gridSize = 6 // 6x6 grid
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private var cellSize = 0f
+    private var offsetX = 0f
+    private var offsetY = 0f
+
+    // Oyun renkleri
+    private val colors = listOf(
+        Color.parseColor("#e74c3c"), // kırmızı
+        Color.parseColor("#3498db"), // mavi
+        Color.parseColor("#2ecc71"), // yeşil
+        Color.parseColor("#f39c12"), // turuncu
+        Color.parseColor("#9b59b6")  // mor
+    )
+
+    // Level 1 - Kolay (6x6)
+    private var dots = listOf(
+        Dot(2, 3, 0), Dot(3, 0, 0), // kırmızı (K)
+        Dot(1, 4, 1), Dot(5, 0, 1), // mor (M)
+        Dot(2, 2, 2), Dot(4, 4, 2), // yeşil (Y)
+        Dot(3, 2, 3), Dot(3, 4, 3)  // turuncu (T)
+    )
+
+    private val level2 = listOf(
+        Dot(0, 1, 0), Dot(3, 0, 0),
+        Dot(0, 3, 1), Dot(5, 0, 1),
+        Dot(2, 2, 2), Dot(4, 4, 2),
+        Dot(4, 2, 3), Dot(3, 4, 3)
+    )
+
+    private fun loadNextLevel() {
+        dots = level2
+        paths.clear()
+        invalidate()
+    }
+
+    // Her renk için çizilen yol (hücre listesi)
+    private val paths = mutableMapOf<Int, MutableList<Cell>>()
+
+    // Şu an sürüklenen renk
+    private var activeColorIndex = -1
+
+    // Parmağın anlık pozisyonu (çizgi sürüklenirken)
+    private var fingerX = 0f
+    private var fingerY = 0f
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        cellSize = minOf(w, h).toFloat() / gridSize
+        offsetX = (w - cellSize * gridSize) / 2f
+        offsetY = (h - cellSize * gridSize) / 2f
+    }
+
+    // Piksel koordinatından grid hücresine dönüştür
+    private fun pixelToCell(x: Float, y: Float): Cell? {
+        val col = ((x - offsetX) / cellSize).toInt()
+        val row = ((y - offsetY) / cellSize).toInt()
+        if (row < 0 || row >= gridSize || col < 0 || col >= gridSize) return null
+        return Cell(row, col)
+    }
+
+    // Hücre merkezinin piksel koordinatı
+    private fun cellCenter(cell: Cell): Pair<Float, Float> {
+        val cx = offsetX + cell.col * cellSize + cellSize / 2f
+        val cy = offsetY + cell.row * cellSize + cellSize / 2f
+        return Pair(cx, cy)
+    }
+
+    // O hücrede nokta var mı?
+    private fun dotAt(cell: Cell): Dot? {
+        return dots.find { it.row == cell.row && it.col == cell.col }
+    }
+
+    // O hücre başka bir rengin yolunda mı?
+    private fun cellOccupied(cell: Cell, excludeColor: Int): Boolean {
+        for ((colorIndex, path) in paths) {
+            if (colorIndex == excludeColor) continue
+            if (path.any { it.row == cell.row && it.col == cell.col }) return true
+        }
+        return false
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        val x = event.x
+        val y = event.y
+        val cell = pixelToCell(x, y)
+
+        when (event.action) {
+            MotionEvent.ACTION_DOWN -> {
+                if (checkWin()) {
+                    loadNextLevel()
+                    return true
+                }
+
+                if (cell != null) {
+                    val dot = dotAt(cell)
+                    if (dot != null) {
+                        // Noktaya dokunuldu, o rengin yolunu sıfırla ve başlat
+                        activeColorIndex = dot.colorIndex
+                        paths[activeColorIndex] = mutableListOf(cell)
+                        fingerX = x
+                        fingerY = y
+                        invalidate()
+                    }
+                }
+            }
+
+            MotionEvent.ACTION_MOVE -> {
+                if (activeColorIndex >= 0 && cell != null) {
+                    val currentPath = paths[activeColorIndex] ?: return true
+                    val lastCell = currentPath.lastOrNull()
+
+                    if (lastCell != null && cell != lastCell) {
+                        // Geri gidiyorsa yolu kısalt
+                        val prevIndex = currentPath.indexOf(cell)
+                        if (prevIndex >= 0) {
+                            while (currentPath.size > prevIndex + 1) {
+                                currentPath.removeAt(currentPath.size - 1)
+                            }
+                        } else {
+                            // Komşu hücre mi kontrol et (diagonal değil)
+                            val dr = Math.abs(cell.row - lastCell.row)
+                            val dc = Math.abs(cell.col - lastCell.col)
+                            if (dr + dc == 1) {
+                                // Başka rengin üzerine geçme
+                                if (!cellOccupied(cell, activeColorIndex)) {
+                                    // Eğer farklı renkte bir noktaysa geçme
+                                    val dotHere = dotAt(cell)
+                                    if (dotHere == null || dotHere.colorIndex == activeColorIndex) {
+                                        currentPath.add(cell)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    fingerX = x
+                    fingerY = y
+                    invalidate()
+                }
+            }
+
+            MotionEvent.ACTION_UP -> {
+                activeColorIndex = -1
+                invalidate()
+            }
+        }
+        return true
+    }
+
+    private fun drawWin(canvas: Canvas) {
+        paint.style = Paint.Style.FILL
+        paint.color = Color.parseColor("#CC000000")
+        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
+
+        paint.color = Color.WHITE
+        paint.textSize = cellSize * 1.2f
+        paint.textAlign = Paint.Align.CENTER
+        canvas.drawText("You Win! 🎉", width / 2f, height / 2f - cellSize, paint)
+
+        paint.textSize = cellSize * 0.6f
+        canvas.drawText("All paths connected!", width / 2f, height / 2f + cellSize * 0.2f, paint)
+    }
+
+    private fun checkWin(): Boolean {
+        val colorCount = colors.size
+        for (i in 0 until colorCount) {
+            val pair = dots.filter { it.colorIndex == i }
+            if (pair.size != 2) continue
+            val path = paths[i] ?: return false
+            if (path.size < 2) return false
+            val a = Cell(pair[0].row, pair[0].col)
+            val b = Cell(pair[1].row, pair[1].col)
+            val first = path.first()
+            val last = path.last()
+            if (!((first == a && last == b) || (first == b && last == a))) return false
+        }
+        return true
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        canvas.drawColor(Color.parseColor("#1a1a2e")) // koyu arka plan
+        drawGrid(canvas)
+        drawPaths(canvas)  // bunu ekle
+        drawDots(canvas)
+        if (checkWin()) drawWin(canvas)
+    }
+
+    private fun drawGrid(canvas: Canvas) {
+        paint.color = Color.parseColor("#2a2a4a")
+        paint.strokeWidth = 2f
+        paint.style = Paint.Style.STROKE
+
+        for (row in 0..gridSize) {
+            // yatay çizgiler
+            canvas.drawLine(
+                offsetX,
+                offsetY + row * cellSize,
+                offsetX + gridSize * cellSize,
+                offsetY + row * cellSize,
+                paint
+            )
+            // dikey çizgiler
+            canvas.drawLine(
+                offsetX + row * cellSize,
+                offsetY,
+                offsetX + row * cellSize,
+                offsetY + gridSize * cellSize,
+                paint
+            )
+        }
+    }
+
+    private fun drawPaths(canvas: Canvas) {
+        paint.style = Paint.Style.STROKE
+        paint.strokeCap = Paint.Cap.ROUND
+        paint.strokeJoin = Paint.Join.ROUND
+        paint.strokeWidth = cellSize * 0.35f
+
+        for ((colorIndex, path) in paths) {
+            if (path.isEmpty()) continue
+            paint.color = colors[colorIndex]
+
+            val androidPath = Path()
+            val (startX, startY) = cellCenter(path[0])
+            androidPath.moveTo(startX, startY)
+
+            for (i in 1 until path.size) {
+                val (cx, cy) = cellCenter(path[i])
+                androidPath.lineTo(cx, cy)
+            }
+
+            canvas.drawPath(androidPath, paint)
+        }
+    }
+
+    private fun drawDots(canvas: Canvas) {
+        val radius = cellSize * 0.3f
+
+        for (dot in dots) {
+            val cx = offsetX + dot.col * cellSize + cellSize / 2f
+            val cy = offsetY + dot.row * cellSize + cellSize / 2f
+
+            // Dış halka
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = 4f
+            paint.color = colors[dot.colorIndex]
+            canvas.drawCircle(cx, cy, radius, paint)
+
+            // İç dolgu
+            paint.style = Paint.Style.FILL
+            paint.color = colors[dot.colorIndex]
+            canvas.drawCircle(cx, cy, radius * 0.6f, paint)
+        }
+    }
+}
+```
 
